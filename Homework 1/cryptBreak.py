@@ -18,14 +18,8 @@ def cryptBreak(ciphertextFile,key_bv):
     NUM_BYTES_BLOCK = BLOCKSIZE // 8
 
     #Read original file, Convert file to bitvector block by block
-    cipher_bv = BitVector(filename=ciphertextFile)
-    cipher_bv_complete = BitVector(size=0)
-    while(cipher_bv.more_to_read):
-        cipher_bv_read =  cipher_bv.read_bits_from_file(BLOCKSIZE) #Read single block
-        if(len(cipher_bv_read) < BLOCKSIZE): #If the block read is shorter than the blocksize, concatenate last bits
-            cipher_bv_read += BitVector(size=BLOCKSIZE - len(cipher_bv_read))
-        cipher_bv_complete += cipher_bv_read
-
+    fp = open(ciphertextFile)
+    cipher_bv = BitVector(hexstring=fp.read())
 
     #Passphrase
     pass_phrase = "Hopes and dreams of a million years"
@@ -38,8 +32,8 @@ def cryptBreak(ciphertextFile,key_bv):
     #For each block in bitvector perform incremental xoring
     plaintext_bv = BitVector(size=0) #Holds original message
     previous_cipher_block = pass_phrase_bv  #Previous bitblock is key for 1st iteration
-    for i in range(0, (len(cipher_bv_complete) // BLOCKSIZE)):
-        current_cipher_block = cipher_bv_complete[i*BLOCKSIZE:(i+1)*BLOCKSIZE] #Obtain one block of ciphertext
+    for i in range(0, (len(cipher_bv) // BLOCKSIZE)):
+        current_cipher_block = cipher_bv[i*BLOCKSIZE:(i+1)*BLOCKSIZE] #Obtain one block of ciphertext
         temp = current_cipher_block.deep_copy()
         current_cipher_block ^=  previous_cipher_block
         previous_cipher_block = temp
@@ -52,14 +46,14 @@ def cryptBreak(ciphertextFile,key_bv):
 
 if __name__ == "__main__":
     #Brute Force all combinations
-    for i in range(20000,65536): #Attempt to use all blocksize 16 keys
+    for i in range(0,65536): #Attempt to use all blocksize 16 keys
         key_bv = BitVector(intVal=i, size=16)
+        decryptedMessage = cryptBreak('encrypted.txt', key_bv)
         if i %1000 == 0:
             print(i)
-        decryptedMessage = cryptBreak('encrypted.txt', key_bv)
         if 'Mark Twain' in decryptedMessage:
+            print(i,':',key_bv)
             print('Encryption Broken!')
-            print(key_bv)
             print(decryptedMessage)
             break;
 
