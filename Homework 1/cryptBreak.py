@@ -31,7 +31,7 @@ def cryptBreak(ciphertextFile,key_bv):
 
     #For each block in bitvector perform incremental xoring
     plaintext_bv = BitVector(size=0) #Holds original message
-    previous_cipher_block = pass_phrase_bv  #Previous bitblock is key for 1st iteration
+    previous_cipher_block = pass_phrase_bv  #Previous bitblock is passphrase for 1st iteration
     for i in range(0, (len(cipher_bv) // BLOCKSIZE)):
         current_cipher_block = cipher_bv[i*BLOCKSIZE:(i+1)*BLOCKSIZE] #Obtain one block of ciphertext
         temp = current_cipher_block.deep_copy()
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     for i in range(0,65536): #Attempt to use all blocksize 16 keys
         key_bv = BitVector(intVal=i, size=16)
         decryptedMessage = cryptBreak('encrypted.txt', key_bv)
-        if i %1000 == 0:
+        if i % 1000 == 0:
             print(i)
         if 'Mark Twain' in decryptedMessage:
             print(i,':',key_bv)
