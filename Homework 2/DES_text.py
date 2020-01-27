@@ -110,7 +110,7 @@ def encrypt(message, key, encrypted):
         #Append each segment's left and right halves together.
         encrypted_bv += (Right + Left) #Check Method of usage
 
-    #Once finished reading, write bitvector to encrypted
+    #Once finished reading, write bitvector to encrypted_ppm
     encrypted_fp = open(file=encrypted, mode='w')
     encrypted_bv_hex_string = encrypted_bv.get_hex_string_from_bitvector()
     encrypted_fp.write(encrypted_bv_hex_string)

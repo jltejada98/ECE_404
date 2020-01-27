@@ -72,9 +72,9 @@ pbox_permutation = [15,6,19,20,28,11,27,16,0,14,22,25,4,
                     5,21,10,3,24]
 
 
-def encrypt(image, key, encrypted):
-    #Open image, Read three lines as header
-    image_fp = open(file=image, mode='rb')
+def encrypt(input_image, key, encrypted_ppm):
+    #Open input_image, Read three lines as header
+    image_fp = open(file=input_image, mode='rb')
     image_header = []
     image_header.append(image_fp.readline())
     image_header.append(image_fp.readline())
@@ -82,25 +82,20 @@ def encrypt(image, key, encrypted):
 
     #Read remaining lines as data to encrypt.
     image_data = image_fp.read()
+    image_bv = BitVector(rawbytes=image_data)#Convert input_image data to bitvector
 
-    #Create temporary file to encrypt
-    temp_file_fp = open("temp_file.txt", mode='rw+')
-    image_bv = BitVector(rawbytes=image_data)#Convert image data to bitvector
-    temp_file_fp.write(image_bv.get_bitvector_in_hex())
-    temp_file_fp.close()
 
 
     # Obtain key and round keys
     encryption_key, round_keys = generate_keys(key)
 
-    # Split contents of image, must pad last byte if not divisible by 64
+    # Split contents of input_image, must pad last byte if not divisible by 64
     num_segments = len(image_bv) // 64
     image_bv_split = [image_bv[i*64:(i+1)*64] for i in range(num_segments)]
     if (len(image_bv) % 64 != 0):
         last_segment = image_bv[num_segments*64:len(image_bv)]
         last_segment.pad_from_right(64 - (len(image_bv) - num_segments*64))
         image_bv_split.append(last_segment)
-
 
 
     #Continue for entirety of message
@@ -124,11 +119,15 @@ def encrypt(image, key, encrypted):
         encrypted_bv += (Right + Left)  # Check Method of usage
 
 
-    #Write encrypted bitvector to ppm
+    #Write encrypted_ppm bitvector to ppm
     # Use 'wb' as write binary option
-    encrypted_fp = open(file=encrypted, mode='wb')
+    encrypted_fp = open(file=encrypted_ppm, mode='w')
     encrypted_fp.writelines(image_header)
-    encrypted_fp.write(encrypted_bv)
+    encrypted_fp.close()
+    encrypted_fp = open(file=encrypted_ppm, mode='wb')
+    encrypted_bv.write_to_file(file_out=encrypted_fp)
+    encrypted_fp.close()
+
 
     #Close files
     image_fp.close()
