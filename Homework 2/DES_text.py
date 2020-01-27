@@ -84,39 +84,45 @@ def encrypt(message, key, encrypted):
     encrypted_bv = BitVector(size=0)
     while(message_bv.more_to_read):
         #Obtain Segment
-        message_bv_segment = message_bv.read_bits_from_file(64) # Todo: How to pad read bits with 0's when block size is not 64??
-        if message_bv_segment.size > 0:
-            [Left, Right] = message_bv_segment.divide_into_two()  # Perform left/right division
-            for r_key in round_keys: #For each segement of 64-bits perform 16 rounds of encryption
-                new_Right = Right.deep_copy()
-                new_Right = new_Right.permute(permute_list=expansion_permutation) #Perform expansion permutation on right half to 48 bits
-                new_Right ^= r_key # Perform xor with key, must be 48bits
+        message_bv_segment = message_bv.read_bits_from_file(64)
 
-                # Perform substitution with s-boxes, remember input -> 48bits, output -> 32bits
-                s_box_output = BitVector(size=32)
-                s_segments = [new_Right[i*6:i*6+6] for i in range(8)] #Determine segments for substitution
-                for s_index in range(len(s_segments)):
-                    row = 2*s_segments[s_index][0] + s_segments[s_index][-1] #Determine row of substitution
-                    col = int(s_segments[s_index][1:-1]) #Determine column in row of s_box to be substituted with
-                    s_box_output[s_index*4:(s_index*4+4)] = BitVector(intVal=s_boxes[s_index][row][col], size=4) #Perform substitution
+        # Pad read bits with 0's when block size is not 64
+        if message_bv_segment.size < 64:
+            message_bv_segment.pad_from_right(64-len(message_bv_segment))
 
-                p_box_Right = s_box_output.permute(permute_list=pbox_permutation) # Perfprm permutation with P Box
-                p_box_Right ^= Left  # Perform final Xoring with requisite half
-                Left = Right
-                Right = p_box_Right
+        #Feistel function
+        [Left, Right] = message_bv_segment.divide_into_two()  # Perform left/right division
+        for r_key in round_keys: #For each segement of 64-bits perform 16 rounds of encryption
+            new_Right = Right.deep_copy()
+            new_Right = new_Right.permute(permute_list=expansion_permutation) #Perform expansion permutation on right half to 48 bits
+            new_Right ^= r_key # Perform xor with key, must be 48bits
+
+            # Perform substitution with s-boxes, remember input -> 48bits, output -> 32bits
+            s_box_output = substitution(new_Right)
+
+            p_box_Right = s_box_output.permute(permute_list=pbox_permutation) # Perform permutation with P Box
+            p_box_Right ^= Left  # Perform final Xoring with requisite half
+
+            #Set left and right for next round.
+            Left = Right.deep_copy()
+            Right = p_box_Right
             #End of 16 Encryption Rounds for current segment
         #Append each segment's left and right halves together.
-        encrypted_bv += (Left + Right) #Check Method of usage
+        encrypted_bv += (Right + Left) #Check Method of usage
 
     #Once finished reading, write bitvector to encrypted
     encrypted_fp = open(file=encrypted, mode='w')
     encrypted_bv_hex_string = encrypted_bv.get_hex_string_from_bitvector()
     encrypted_fp.write(encrypted_bv_hex_string)
+    encrypted_fp.close()
+
     return
 
-def decrypt(encrypted,key, decryp):
+def decrypt(encrypted,key, decrypted):
     # Obtain key and round keys
     encryption_key, round_keys = generate_keys(key)
+    #Attempt to flip round keys so that key 16 is run 1st
+    round_keys.reverse()
 
     # Convert Message to bitvector
     fp = open(file=encrypted, mode='r')
@@ -124,35 +130,36 @@ def decrypt(encrypted,key, decryp):
 
     # Continue for entirety of message
     decrypted_bv = BitVector(size=0)
-    while (encrypted_bv.more_to_read):
-        # Obtain Segment
-        message_bv_segment = encrypted_bv.read_bits_from_file(64)  # Todo: How to pad read bits with 0's when block size is not 64??
-        if message_bv_segment.size > 0:
-            [Left, Right] = message_bv_segment.divide_into_two()  # Perform left/right division
-            for r_key in round_keys:  # For each segement of 64-bits perform 16 rounds of encryption
-                new_Right = Right.deep_copy()
-                new_Right = new_Right.permute(permute_list=expansion_permutation)  # Perform expansion permutation on right half to 48 bits
-                new_Right ^= r_key  # Perform xor with key, must be 48bits
 
-                # Perform substitution with s-boxes, remember input -> 48bits, output -> 32bits
-                s_box_output = BitVector(size=32)
-                s_segments = [new_Right[i * 6:i * 6 + 6] for i in range(8)]  # Determine segments for substitution
-                for s_index in range(len(s_segments)):
-                    row = 2 * s_segments[s_index][0] + s_segments[s_index][-1]  # Determine row of substitution
-                    col = int(s_segments[s_index][1:-1])  # Determine column in row of s_box to be substituted with
-                    s_box_output[s_index * 4:(s_index * 4 + 4)] = BitVector(intVal=s_boxes[s_index][row][col],size=4)  #Perform substitution
+    #Split hexfile into 64 bit chunks
+    encrypted_bv_split = [encrypted_bv[i*64:(i+1)*64] for i in range((len(encrypted_bv) // 64))]  #Check if correct
 
-                p_box_Right = s_box_output.permute(permute_list=pbox_permutation)  # Perfprm permutation with P Box
-                p_box_Right ^= Left  # Perform final Xoring with requisite half
-                Left = Right
-                Right = p_box_Right
-            # End of 16 Encryption Rounds for current segment
+    for encrypted_bv_segment in encrypted_bv_split:
+        # Obtain Segments
+        [Left, Right] = encrypted_bv_segment.divide_into_two()  # Perform left/right division
+        for r_key in round_keys:  # For each segement of 64-bits perform 16 rounds of encryption
+            new_Right = Right.deep_copy()
+            new_Right = new_Right.permute(permute_list=expansion_permutation)  # Perform expansion permutation on right half to 48 bits
+            new_Right ^= r_key  # Perform xor with key, must be 48bits
+
+            # Perform substitution with s-boxes, remember input -> 48bits, output -> 32bits
+            s_box_output = substitution(new_Right)
+
+            p_box_Right = s_box_output.permute(permute_list=pbox_permutation)  # Perform permutation with P Box
+            p_box_Right ^= Left  # Perform final Xoring with requisite half
+            Left = Right.deep_copy()
+            Right = p_box_Right
+        # End of 16 Encryption Rounds for current segment
         # Append each segment's left and right halves together.
-        decrypted_bv += (Left + Right)  # Check Method of usage
+        decrypted_bv += (Right + Left)  # Check Method of usage
 
+    # Once finished reading, write bitvector to decrypted
+    decrypted_fp = open(file=decrypted, mode='w')
+    decrypted_bv_text = decrypted_bv.get_text_from_bitvector()
+    decrypted_fp.write(decrypted_bv_text)
+    decrypted_fp.close()
 
     return
-
 
 def generate_keys(key):
     #Obtain Encryption key
@@ -175,6 +182,17 @@ def generate_keys(key):
 
     return key_bv_p, round_keys
 
+def substitution(half_block_48):
+
+    s_box_output = BitVector(size=32)
+    s_segments = [half_block_48[(i * 6):(i * 6 + 6)] for i in range(8)]  # Determine segments for substitution
+    for s_index in range(len(s_segments)): #For each segment
+        row = 2 * s_segments[s_index][0] + s_segments[s_index][-1]  # Determine row of substitution
+        col = int(s_segments[s_index][1:-1])  # Determine column in row of s_box to be substituted with
+        s_box_output[s_index * 4:(s_index * 4 + 4)] = BitVector(intVal=s_boxes[s_index][row][col],size=4)  # Perform substitution
+
+    return s_box_output
+
 if __name__ == "__main__":
     # Assume correct number of arguments and format
     if sys.argv[1] == '-e':
@@ -187,4 +205,3 @@ if __name__ == "__main__":
         key = sys.argv[3]
         decrypted = sys.argv[4]
         decrypt(encrypted,key, decrypted)
-
