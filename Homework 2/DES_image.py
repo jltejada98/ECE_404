@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 from BitVector import *
 
@@ -73,72 +72,41 @@ pbox_permutation = [15,6,19,20,28,11,27,16,0,14,22,25,4,
                     5,21,10,3,24]
 
 
-def encrypt(message, key, encrypted):
-    #Obtain key and round keys
+def encrypt(image, key, encrypted):
+    #Open image, Read three lines as header
+    image_fp = open(file=image, mode='rb')
+    image_header = []
+    image_header.append(image_fp.readline())
+    image_header.append(image_fp.readline())
+    image_header.append(image_fp.readline())
+
+    #Read remaining lines as data to encrypt.
+    image_data = image_fp.read()
+
+    #Create temporary file to encrypt
+    temp_file_fp = open("temp_file.txt", mode='rw+')
+    image_bv = BitVector(rawbytes=image_data)#Convert image data to bitvector
+    temp_file_fp.write(image_bv.get_bitvector_in_hex())
+    temp_file_fp.close()
+
+
+    # Obtain key and round keys
     encryption_key, round_keys = generate_keys(key)
 
-    #Convert Message to bitvector
-    message_bv = BitVector(filename=message) #Assume conversion with textstring.
+    # Split contents of image, must pad last byte if not divisible by 64
+    num_segments = len(image_bv) // 64
+    image_bv_split = [image_bv[i*64:(i+1)*64] for i in range(num_segments)]
+    if (len(image_bv) % 64 != 0):
+        last_segment = image_bv[num_segments*64:len(image_bv)]
+        last_segment.pad_from_right(64 - (len(image_bv) - num_segments*64))
+        image_bv_split.append(last_segment)
+
+
 
     #Continue for entirety of message
     encrypted_bv = BitVector(size=0)
-    while(message_bv.more_to_read):
-        #Obtain Segment
-        message_bv_segment = message_bv.read_bits_from_file(64)
-
-        # Pad read bits with 0's when block size is not 64
-        if message_bv_segment.size < 64:
-            message_bv_segment.pad_from_right(64-len(message_bv_segment))
-
-        #Feistel function
-        [Left, Right] = message_bv_segment.divide_into_two()  # Perform left/right division
-        for r_key in round_keys: #For each segement of 64-bits perform 16 rounds of encryption
-            new_Right = Right.deep_copy()
-            new_Right = new_Right.permute(permute_list=expansion_permutation) #Perform expansion permutation on right half to 48 bits
-            new_Right ^= r_key # Perform xor with key, must be 48bits
-
-            # Perform substitution with s-boxes, remember input -> 48bits, output -> 32bits
-            s_box_output = substitution(new_Right)
-
-            p_box_Right = s_box_output.permute(permute_list=pbox_permutation) # Perform permutation with P Box
-            p_box_Right ^= Left  # Perform final Xoring with requisite half
-
-            #Set left and right for next round.
-            Left = Right.deep_copy()
-            Right = p_box_Right
-            #End of 16 Encryption Rounds for current segment
-        #Append each segment's left and right halves together.
-        encrypted_bv += (Right + Left) #Check Method of usage
-
-    #Once finished reading, write bitvector to encrypted
-    encrypted_fp = open(file=encrypted, mode='w')
-    encrypted_bv_hex_string = encrypted_bv.get_hex_string_from_bitvector()
-    encrypted_fp.write(encrypted_bv_hex_string)
-
-    #Close files
-    encrypted_fp.close()
-
-    return
-
-def decrypt(encrypted,key, decrypted):
-    # Obtain key and round keys
-    encryption_key, round_keys = generate_keys(key)
-    #Attempt to flip round keys so that key 16 is run 1st
-    round_keys.reverse()
-
-    # Convert Message to bitvector
-    fp = open(file=encrypted, mode='r')
-    encrypted_bv = BitVector(hexstring=fp.read())  # Assume conversion from hexstring to bitvector
-
-    # Continue for entirety of message
-    decrypted_bv = BitVector(size=0)
-
-    #Split hexfile into 64 bit chunks
-    encrypted_bv_split = [encrypted_bv[i*64:(i+1)*64] for i in range((len(encrypted_bv) // 64))]  #Check if correct
-
-    for encrypted_bv_segment in encrypted_bv_split:
-        # Obtain Segments
-        [Left, Right] = encrypted_bv_segment.divide_into_two()  # Perform left/right division
+    for image_bv_segment in image_bv_split:
+        [Left, Right] = image_bv_segment.divide_into_two()
         for r_key in round_keys:  # For each segement of 64-bits perform 16 rounds of encryption
             new_Right = Right.deep_copy()
             new_Right = new_Right.permute(permute_list=expansion_permutation)  # Perform expansion permutation on right half to 48 bits
@@ -153,18 +121,20 @@ def decrypt(encrypted,key, decrypted):
             Right = p_box_Right
         # End of 16 Encryption Rounds for current segment
         # Append each segment's left and right halves together.
-        decrypted_bv += (Right + Left)  # Check Method of usage
+        encrypted_bv += (Right + Left)  # Check Method of usage
 
-    # Once finished reading, write bitvector to decrypted
-    decrypted_fp = open(file=decrypted, mode='w')
-    decrypted_bv_text = decrypted_bv.get_text_from_bitvector()
-    decrypted_fp.write(decrypted_bv_text)
+
+    #Write encrypted bitvector to ppm
+    # Use 'wb' as write binary option
+    encrypted_fp = open(file=encrypted, mode='wb')
+    encrypted_fp.writelines(image_header)
+    encrypted_fp.write(encrypted_bv)
 
     #Close files
-    fp.close()
-    decrypted_fp.close()
+    image_fp.close()
 
     return
+
 
 def generate_keys(key):
     #Obtain Encryption key
@@ -198,15 +168,10 @@ def substitution(half_block_48):
 
     return s_box_output
 
+
 if __name__ == "__main__":
-    # Assume correct number of arguments and format
-    if sys.argv[1] == '-e':
-        message = sys.argv[2]
-        key = sys.argv[3]
-        encrypted = sys.argv[4]
-        encrypt(message, key, encrypted)
-    else:  # Assume decryption
-        encrypted = sys.argv[2]
-        key = sys.argv[3]
-        decrypted = sys.argv[4]
-        decrypt(encrypted,key, decrypted)
+    image = sys.argv[1]
+    key = sys.argv[2]
+    encrypted = sys.argv[3]
+    encrypt(image, key, encrypted)
+
