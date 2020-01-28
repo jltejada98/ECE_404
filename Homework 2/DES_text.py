@@ -200,13 +200,19 @@ def substitution(half_block_48):
 
 if __name__ == "__main__":
     # Assume correct number of arguments and format
+    if len(sys.argv) != 5:
+        print("Incorrect number of Arguments")
+        exit(1)
     if sys.argv[1] == '-e':
         message = sys.argv[2]
         key = sys.argv[3]
         encrypted = sys.argv[4]
         encrypt(message, key, encrypted)
-    else:  # Assume decryption
+    elif sys.argv[1] == '-d':
         encrypted = sys.argv[2]
         key = sys.argv[3]
         decrypted = sys.argv[4]
         decrypt(encrypted,key, decrypted)
+    else:
+        print("Incorrect Encryption/Decryption Option.")
+        exit(1)

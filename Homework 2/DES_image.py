@@ -166,6 +166,9 @@ def substitution(half_block_48):
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 4:
+        print("Incorrect Number of Arguements")
+        exit(1)
     image = sys.argv[1]
     key = sys.argv[2]
     encrypted = sys.argv[3]
