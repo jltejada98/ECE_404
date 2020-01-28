@@ -84,7 +84,8 @@ def encrypt(input_image, key, encrypted_ppm):
     image_data = image_fp.read()
     image_bv = BitVector(rawbytes=image_data)#Convert input_image data to bitvector
 
-
+    # Close files
+    image_fp.close()
 
     # Obtain key and round keys
     encryption_key, round_keys = generate_keys(key)
@@ -96,6 +97,12 @@ def encrypt(input_image, key, encrypted_ppm):
         last_segment = image_bv[num_segments*64:len(image_bv)]
         last_segment.pad_from_right(64 - (len(image_bv) - num_segments*64))
         image_bv_split.append(last_segment)
+
+     # Write encrypted_ppm bitvector to ppm
+    # Use 'wb' as write binary option
+    encrypted_fp = open(file=encrypted_ppm, mode='wb')
+    for h in image_header:
+        encrypted_fp.write(h)
 
 
     #Continue for entirety of message
@@ -116,21 +123,11 @@ def encrypt(input_image, key, encrypted_ppm):
             Right = p_box_Right
         # End of 16 Encryption Rounds for current segment
         # Append each segment's left and right halves together.
-        encrypted_bv += (Right + Left)  # Check Method of usage
+        encrypted_bv = (Right + Left)  # Check Method of usage
+        encrypted_bv.write_to_file(file_out=encrypted_fp)
 
-
-    #Write encrypted_ppm bitvector to ppm
-    # Use 'wb' as write binary option
-    encrypted_fp = open(file=encrypted_ppm, mode='w')
-    encrypted_fp.writelines(image_header)
+    #Close File
     encrypted_fp.close()
-    encrypted_fp = open(file=encrypted_ppm, mode='wb')
-    encrypted_bv.write_to_file(file_out=encrypted_fp)
-    encrypted_fp.close()
-
-
-    #Close files
-    image_fp.close()
 
     return
 
