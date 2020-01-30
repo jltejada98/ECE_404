@@ -76,7 +76,10 @@ pbox_permutation = [15,6,19,20,28,11,27,16,0,14,22,25,4,
 def encrypt(message, key, encrypted):
     #Obtain key and round keys
     encryption_key, round_keys = generate_keys(key)
-
+    print(encryption_key.get_bitvector_in_hex())
+    for f in round_keys:
+        print(f.get_bitvector_in_hex())
+    return
     #Convert Message to bitvector
     message_bv = BitVector(filename=message) #Assume conversion with textstring.
 

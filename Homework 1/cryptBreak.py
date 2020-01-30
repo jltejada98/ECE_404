@@ -46,7 +46,7 @@ def cryptBreak(ciphertextFile,key_bv):
 
 if __name__ == "__main__":
     #Brute Force all combinations
-    for i in range(0,65536): #Attempt to use all blocksize 16 keys
+    for i in range(20000,65536): #Attempt to use all blocksize 16 keys
         key_bv = BitVector(intVal=i, size=16)
         decryptedMessage = cryptBreak('encrypted.txt', key_bv)
         if i % 1000 == 0:
