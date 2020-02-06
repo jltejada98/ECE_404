@@ -18,5 +18,9 @@ def determine_field(n):
     return
 
 if __name__ == "__main__":
-    num = int(input("Enter a number n:"))
-    determine_field(num)
+    num = input("Enter a number n: ")
+    if num.isdigit():
+        determine_field(int(num))
+    else:
+        print("Input must be a positive integer")
+        exit(1)
