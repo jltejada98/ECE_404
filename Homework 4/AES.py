@@ -6,7 +6,8 @@ import sys
 #AES irreducible polynomial equation
 AES_modulus = BitVector(bitstring='100011011')
 NUM_ROUNDS = 14 #Number of rounds corresponding to 256 bit key.
-
+ROW_SHIFTING_ENCRYPTION = [0,5,10,15,4,9,14,3,8,13,2,7,12,1,6,11]
+ROW_SHIFTING_DECRYPTION = [0,13,10,7,4,1,14,11,8,5,2,15,12,9,6,3]
 
 def encrypt(message_file, key_file, encrypted_file):
     #Read key file.
@@ -54,7 +55,7 @@ def encrypt(message_file, key_file, encrypted_file):
             #Substitute bytes step.
             message_bv_segment = sub_bytes(message_bv_segment,byte_sub_table)
             #Shift Rows
-            message_bv_segment = shift_rows(message_bv_segment)
+            message_bv_segment = shift_rows(message_bv_segment, ROW_SHIFTING_ENCRYPTION)
             #Mix Collumns
             message_bv_segment = mix_collumns(message_bv_segment)
             #Add Round Key
@@ -65,7 +66,7 @@ def encrypt(message_file, key_file, encrypted_file):
         # Substitute bytes step.
         message_bv_segment = sub_bytes(message_bv_segment,byte_sub_table)
         # Shift Rows
-        message_bv_segment = shift_rows(message_bv_segment)
+        message_bv_segment = shift_rows(message_bv_segment, ROW_SHIFTING_ENCRYPTION)
         # Add Round Key
         current_round_key = BitVector(hexstring=round_keys[14])
         message_bv_segment ^= current_round_key
@@ -133,8 +134,8 @@ def sub_bytes(segment_bv,byte_sub_table):
         subs_byte += byte_substitution
     return subs_byte
 
-def shift_rows(segment_bv):
-    row_shifting = [0,5,10,15,4,9,14,3,8,13,2,7,12,1,6,11] #Mapping from byte index to desired index
+def shift_rows(segment_bv, row_shifting):
+    #Mapping from byte index to desired index
     shifted_segment = BitVector(size=0)
     for shift in row_shifting:
         shifted_byte = segment_bv[shift*8:(shift+1)*8]  #Obtain bytes to shift around
@@ -171,8 +172,9 @@ def decrypt(encrypted_file, key_file, decrypted_file):
 
     # Encryption Key Word Generation
     key_words = []
-    byte_sub_table = generate_inv_sub_bytes_table()
+    byte_sub_table = generate_sub_bytes_table()
     key_words = gen_key_schedule_256(key_bv, byte_sub_table)
+    byte_sub_table = generate_inv_sub_bytes_table()  # Generate Inverse byte substitution table
 
     #Obtain key schedule
     key_schedule = []
@@ -190,11 +192,54 @@ def decrypt(encrypted_file, key_file, decrypted_file):
     #Reverse round keys for usage in decryption
     round_keys.reverse()
 
+    #Read encrypted file
+    encrypted_file_pointer = open(file=encrypted_file, mode='r')
+    encrypted_bv = BitVector(hexstring=encrypted_file_pointer.read())
+    encrypted_file_pointer.close()
 
+    #Split hexfile into 128 bit segments
+    encrypted_bv_split = [encrypted_bv[i*128:(i+1)*128] for i in range(len(encrypted_bv) // 128)]
+
+    decrypted_bv = BitVector(size=0)
+    for message_bv_segment in encrypted_bv_split:
+        # Add first round key to message segment
+        current_round_key = BitVector(hexstring=round_keys[0])
+        message_bv_segment ^= current_round_key
+
+        # Perform remaning rounds of encryption
+        for i in range(1, NUM_ROUNDS):
+            # Inverse Shift Rows
+            message_bv_segment = shift_rows(message_bv_segment, ROW_SHIFTING_DECRYPTION)
+            #  Inverse Substitute bytes
+            message_bv_segment = sub_bytes(message_bv_segment, byte_sub_table)
+            # Add Round Key
+            current_round_key = BitVector(hexstring=round_keys[i])
+            message_bv_segment ^= current_round_key
+            # Inverse Mix Collumns
+            message_bv_segment = inv_mix_collumns(message_bv_segment)
+
+        ####w0-w4 should be in the same order####
+        ####but you should apply w57-w60 first###
+        ####w53-w56####
+
+        ##Last round of encryption
+        # Inverse Shift Rows
+        message_bv_segment = shift_rows(message_bv_segment, ROW_SHIFTING_DECRYPTION)
+        #  Inverse Substitute bytes
+        message_bv_segment = sub_bytes(message_bv_segment, byte_sub_table)
+        # Add Round Key
+        current_round_key = BitVector(hexstring=round_keys[14])
+        message_bv_segment ^= current_round_key
+
+        # Append encrypted message to bitvector
+        decrypted_bv += message_bv_segment
+
+    # Once finished reading, write bitvector to decrypted
+    decrypted_file_pointer = open(file=decrypted_file, mode='w')
+    decrypted_bv_text = decrypted_bv.get_text_from_bitvector()
+    decrypted_file_pointer.write(decrypted_bv_text)
 
     return
-
-
 
 def generate_inv_sub_bytes_table():
     inv_sub_bytes_table = list()
@@ -208,6 +253,29 @@ def generate_inv_sub_bytes_table():
         b = check if isinstance(check, BitVector) else 0
         inv_sub_bytes_table.append(int(b))
     return  inv_sub_bytes_table
+
+def inv_mix_collumns(segment_bv):
+    mixed_segment = BitVector(size=0)
+    b_09 = BitVector(hexstring="9")
+    b_0B = BitVector(hexstring="B")
+    b_0E = BitVector(hexstring="E")
+    b_0D = BitVector(hexstring="D")
+    for i in range(16):
+        min_ind_col = (i // 4 ) * 4 #Minimum index to loop back to
+        max_ind_col = (i // 4 + 1) * 4 #Maximum index to loop back to
+        byte_1_index = (i+1) % max_ind_col #Determine index of first byte operation
+        byte_2_index = (i+2) % max_ind_col #Determine index of second byte operation
+        byte_3_index = (i+3) % max_ind_col #Determine index of third byte operation
+        if byte_1_index < min_ind_col: byte_1_index += min_ind_col #Add minimum offset to get correct element in column
+        if byte_2_index < min_ind_col: byte_2_index += min_ind_col
+        if byte_3_index < min_ind_col: byte_3_index += min_ind_col
+        byte_0 = b_0E.gf_multiply_modular(b=segment_bv[i*8:(i+1)*8], mod=AES_modulus, n=8)
+        byte_1 = b_0B.gf_multiply_modular(b=segment_bv[byte_1_index*8:(byte_1_index+1)*8], mod=AES_modulus, n=8)
+        byte_2 = b_0D.gf_multiply_modular(b=segment_bv[byte_2_index*8:(byte_2_index+1)*8], mod=AES_modulus, n=8)
+        byte_3 = b_09.gf_multiply_modular(b=segment_bv[byte_3_index*8:(byte_3_index+1)*8], mod=AES_modulus, n=8)
+        mixed_segment += byte_0 ^ byte_1 ^ byte_2 ^ byte_3
+
+    return mixed_segment
 
 if __name__ == "__main__":
     # Assume correct number of arguments and format
