@@ -19,6 +19,7 @@ def encrypt(message_file, key_file, encrypted_file):
     #Encryption Key Word Generation
     key_words = []
     byte_sub_table = generate_sub_bytes_table()
+    print(byte_sub_table)
     key_words = gen_key_schedule_256(key_bv, byte_sub_table)
 
     #Obtain key schedule
