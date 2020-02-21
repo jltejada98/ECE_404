@@ -70,18 +70,11 @@ def ctr_aes_image(iv,image_file='image.ppm',out_file='enc_image.ppm',key_file='k
             i * 4 + 3]).get_bitvector_in_hex()
 
     # Continue for entirety of message
-    # bv_1 = BitVector(intVal=1, size=128)
-    i = 0
     for image_bv_segment in image_bv_split:
-        print(i)
-        encrypted_bv = encrypt(iv, round_keys)
-        encrypted_bv ^= image_bv_segment
-        encrypted_bv.write_to_file(file_out=encrypted_fp)
-        # iv += bv_1  #Joining two bitvectors toegether, not adding !!
-        #Attempt 1
-        iv = BitVector(size=128, intVal=(iv.int_val()+1))
-        i+= 1
-
+        encrypted_bv = encrypt(iv, round_keys) #Encrypting initialization vector.
+        encrypted_bv ^= image_bv_segment #Xor with image segment
+        encrypted_bv.write_to_file(file_out=encrypted_fp) #Write to image file.
+        iv = BitVector(size=128, intVal=(iv.int_val()+1)) #Incrementing initialization vector.
 
     # Close File
     encrypted_fp.close()

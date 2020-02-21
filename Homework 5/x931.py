@@ -51,7 +51,7 @@ def x931(v0, dt, totalNum, key_file):
     for i in range(totalNum):
         vj ^= dt_encrypted #Xor encrypted datetime with vj vector
         rand_num = encrypt(vj, round_keys) #Encrypt result
-        rand_num_list.append(rand_num)
+        rand_num_list.append(rand_num) #Append to returning list.
         rand_num ^= dt_encrypted #Xor randomn number with datetime encrypted vector
         vj = encrypt(rand_num, round_keys) #Encrypt result
 
