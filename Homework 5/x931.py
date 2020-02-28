@@ -128,7 +128,7 @@ def sub_bytes(segment_bv,byte_sub_table):
     return subs_byte
 
 def shift_rows(segment_bv, row_shifting):
-    #Mapping from byte index to desired index
+    #Mapping from byte index fo desired index
     shifted_segment = BitVector(size=0)
     for shift in row_shifting:
         shifted_byte = segment_bv[shift*8:(shift+1)*8]  #Obtain bytes to shift around
