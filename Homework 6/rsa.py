@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 from BitVector import *
 from PrimeGenerator import PrimeGenerator
 
@@ -68,13 +69,8 @@ def encrypt(message_file, p_file, q_file, encrypted_file):
     q = int(q_file_pointer.read())
     q_file_pointer.close()
 
-    #Compute d
+    #Determine Modulus
     modulus = p*q
-    totient = (p-1)*(q-1)
-    totient_bv = BitVector(intVal=totient, size=256)
-    e_bv = BitVector(intVal=e, size=256)
-    d_bv = e_bv.multiplicative_inverse(totient_bv)
-    d = d_bv.int_val()
 
     #Read message and split into 128 bit blocks
     message_bv = BitVector(filename=message_file)
@@ -119,6 +115,52 @@ def exponentiate(A,B,n):
     return result
 
 def decrypt(encrypted_file, p_file, q_file, decrypted_file):
+    # Open P file
+    p_file_pointer = open(file=p_file, mode='r')
+    p = int(p_file_pointer.read())
+    p_file_pointer.close()
+
+    # Open Q file
+    q_file_pointer = open(file=q_file, mode='r')
+    q = int(q_file_pointer.read())
+    q_file_pointer.close()
+
+    # Compute d
+    modulus = p * q
+    totient = (p - 1) * (q - 1)
+    totient_bv = BitVector(intVal=totient, size=256)
+    e_bv = BitVector(intVal=e, size=256)
+    d_bv = e_bv.multiplicative_inverse(totient_bv)
+    d = d_bv.int_val()
+
+    #Open encrypted file
+    encrypted_file_pointer = open(file=encrypted_file, mode='r')
+    encrypted_bv = BitVector(hexstring=encrypted_file_pointer.read())  # Assume conversion from hexstring to bitvector
+
+    #Split encrypted message into 256 bit blocks
+    encrypted_bv_split = [encrypted_bv[i * BLOCK_SIZE * 2:(i + 1) * BLOCK_SIZE * 2] for i in range((len(encrypted_bv) // (BLOCK_SIZE* 2)))]  # Check if correct
+
+    #Notes:
+    #Encyrpted text is being read correctly.
+
+    decrypted_file_pointer = open(file=decrypted_file, mode='w')
+    #Decrypted bitvector
+    decrypted_bv = BitVector(size=0)
+    for encrypted_bv_segment in encrypted_bv_split:
+        # Perform fast exponentiation
+        encrypted_message_int = encrypted_bv_segment.int_val()
+        result = exponentiate(encrypted_message_int, d, modulus)  # Remember its A^B modulo n
+        result_bv = BitVector(intVal=result, size=BLOCK_SIZE*2)
+        result_bv = result_bv[128:256]
+        decrypted_bv += result_bv
+    # Write to file
+    decrypted_hex = decrypted_bv.get_hex_string_from_bitvector()
+    #Removing Null characters
+    while(decrypted_hex[-2:] == "00"):
+        decrypted_hex = decrypted_hex[:-2]
+    decrypted_string = BitVector(hexstring=decrypted_hex).get_text_from_bitvector()
+    decrypted_file_pointer.write(decrypted_string)
+    decrypted_file_pointer.close()
 
     return
 
@@ -141,9 +183,14 @@ if __name__ == "__main__":
         encrypted_file = sys.argv[5]
         encrypt(message_file, p_file, q_file, encrypted_file)
     elif sys.argv[1] == '-d':
-        if len(sys.argv) != 5:
+        if len(sys.argv) != 6:
             print("Incorrect number of Arguments")
             exit(1)
+        encrypted_file = sys.argv[2]
+        p_file = sys.argv[3]
+        q_file = sys.argv[4]
+        decrypted_file = sys.argv[5]
+        decrypt(encrypted_file, p_file, q_file, decrypted_file)
 
     else:
         print("Incorrect Generate/Encryption/Decryption Option.")
