@@ -136,6 +136,7 @@ def decrypt(encrypted_file, p_file, q_file, decrypted_file):
     #Open encrypted file
     encrypted_file_pointer = open(file=encrypted_file, mode='r')
     encrypted_bv = BitVector(hexstring=encrypted_file_pointer.read())  # Assume conversion from hexstring to bitvector
+    encrypted_file_pointer.close()
 
     #Split encrypted message into 256 bit blocks
     encrypted_bv_split = [encrypted_bv[i * BLOCK_SIZE * 2:(i + 1) * BLOCK_SIZE * 2] for i in range((len(encrypted_bv) // (BLOCK_SIZE* 2)))]  # Check if correct
