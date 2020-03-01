@@ -41,8 +41,9 @@ def encrypt(message_file, enc_file_1, enc_file_2, enc_file_3, n_file):
 
     # Read message and split into 128 bit blocks
     message_bv = BitVector(filename=message_file)
-    message_fp = open(file=message_file, mode='r')
-    print(BitVector(textstring=message_fp.read()).int_val())
+    # message_fp = open(file=message_file, mode='r')
+    # test = BitVector(textstring=message_fp.read())
+    # print(test.int_val())
 
     # Encrypted Bitvector
     encrypted_bv_1 = BitVector(size=0)
@@ -151,9 +152,7 @@ def crack_rsa(enc_file_1, enc_file_2, enc_file_3, n_file, cracked_file):
     n_1 = int(n_file_pointer.readline())
     n_2 = int(n_file_pointer.readline())
     n_3 = int(n_file_pointer.readline())
-    m_1 = n_2 * n_3
-    m_2 = n_1 * n_3
-    m_3 = n_1 * n_2
+    n_file_pointer.close()
 
     #Read encrypted files
     enc_file_1_pointer = open(file=enc_file_1, mode='r')
@@ -166,27 +165,58 @@ def crack_rsa(enc_file_1, enc_file_2, enc_file_3, n_file, cracked_file):
     enc_file_3_bv = BitVector(hexstring=enc_file_3_pointer.read())  # Assume conversion from hexstring to bitvector
     enc_file_3_pointer.close()
 
-    #Assuming n's are pairwise coprime we can use CRT as follows
+
+    #Split files into 256 bit blocks
+    enc_file_1_bv_split = [enc_file_1_bv[i * BLOCK_SIZE * 2:(i + 1) * BLOCK_SIZE * 2] for i in range((len(enc_file_1_bv) // (BLOCK_SIZE * 2)))]  # Check if correct
+    enc_file_2_bv_split = [enc_file_2_bv[i * BLOCK_SIZE * 2:(i + 1) * BLOCK_SIZE * 2] for i in range((len(enc_file_2_bv) // (BLOCK_SIZE * 2)))]  # Check if correct
+    enc_file_3_bv_split = [enc_file_3_bv[i * BLOCK_SIZE * 2:(i + 1) * BLOCK_SIZE * 2] for i in range((len(enc_file_3_bv) // (BLOCK_SIZE * 2)))]  # Check if correct
+
+    # Assuming n's are pairwise coprime we can use CRT as follows
     n_1_bv = BitVector(intVal=n_1, size=256)
     n_2_bv = BitVector(intVal=n_2, size=256)
     n_3_bv = BitVector(intVal=n_3, size=256)
-    #Calculate first term
-    n_2_3 =  BitVector(intVal=m_1, size=512)
-    t_1_inv = n_2_3.multiplicative_inverse(n_1_bv).int_val()
-    t_1 = enc_file_1_bv.int_val()*(m_1)*t_1_inv
-    #Calculate second term
+    m_1 = n_2 * n_3
+    m_2 = n_1 * n_3
+    m_3 = n_1 * n_2
+    n_2_3 = BitVector(intVal=m_1, size=512)
+    t_1_inv = n_2_3.multiplicative_inverse(n_1_bv)
     n_1_3 = BitVector(intVal=m_2, size=512)
-    t_2_inv = n_1_3.multiplicative_inverse(n_2_bv).int_val()
-    t_2 = enc_file_2_bv.int_val() * (m_2) * t_2_inv
-    # Calculate third term
+    t_2_inv = n_1_3.multiplicative_inverse(n_2_bv)
     n_1_2 = BitVector(intVal=m_3, size=512)
-    t_3_inv = n_1_2.multiplicative_inverse(n_3_bv).int_val()
-    t_3 = enc_file_3_bv.int_val() * (m_3) * t_3_inv
+    t_3_inv = n_1_2.multiplicative_inverse(n_3_bv)
 
-    #Use Chinese Remainer Theorem to calculate sum of terms modulo n1*n2*n3
-    result = (t_1+t_2+t_3) % (n_1*n_2*n_3)
-    r = solve_pRoot(p=3, x=result)
-    print(r)
+    message_bv = BitVector(size=0)
+
+    index = 0
+    while(index < len(enc_file_1_bv_split)):
+        enc_file_1_bv_segment = enc_file_1_bv_split[index]
+        enc_file_2_bv_segment = enc_file_2_bv_split[index]
+        enc_file_3_bv_segment = enc_file_3_bv_split[index]
+        #Calculate first term
+        t_1 = enc_file_1_bv_segment.int_val()*(m_1)*t_1_inv.int_val()
+        #Calculate second term
+        t_2 = enc_file_2_bv_segment.int_val() * (m_2) * t_2_inv.int_val()
+        # Calculate third term
+        t_3 = enc_file_3_bv_segment.int_val() * (m_3) * t_3_inv.int_val()
+        #Use Chinese Remainer Theorem to calculate sum of terms modulo n1*n2*n3
+        segment_message_moduli = (t_1+t_2+t_3) % (n_1*n_2*n_3)
+        #Take cube root of result
+        segment_message = solve_pRoot(p=3, x=segment_message_moduli)
+        segment_message_bv = BitVector(intVal=segment_message, size=256)
+        segment_message_bv = segment_message_bv[128:256] #Remove padding.
+        message_bv += segment_message_bv
+        index += 1
+
+    #Write Bitvector to file
+    messsage_hex = message_bv.get_hex_string_from_bitvector()
+    # Removing Null characters
+    while (messsage_hex[-2:] == "00"):
+        messsage_hex = messsage_hex[:-2]
+    message_string = BitVector(hexstring=messsage_hex).get_text_from_bitvector()
+    cracked_file_pointer = open(file=cracked_file, mode='w')
+    cracked_file_pointer.write(message_string)
+    cracked_file_pointer.close()
+
 
     return
 
