@@ -210,13 +210,12 @@ def crack_rsa(enc_file_1, enc_file_2, enc_file_3, n_file, cracked_file):
     #Write Bitvector to file
     messsage_hex = message_bv.get_hex_string_from_bitvector()
     # Removing Null characters
-    while (messsage_hex[-2:] == "00"):
-        messsage_hex = messsage_hex[:-2]
+    while (messsage_hex[-2:] == "00"): #Obtain last two characters
+        messsage_hex = messsage_hex[:-2] #Remove them
     message_string = BitVector(hexstring=messsage_hex).get_text_from_bitvector()
     cracked_file_pointer = open(file=cracked_file, mode='w')
     cracked_file_pointer.write(message_string)
     cracked_file_pointer.close()
-
 
     return
 
