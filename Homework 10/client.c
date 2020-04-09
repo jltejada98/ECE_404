@@ -60,7 +60,8 @@ int main(int argc, char *argv[])
 	char two[2];
 
 	/* repeat until "exit" input */
-	while(1){		printf("Say something: ");
+	while(1){
+		printf("Say something: ");
 		fgets(sendDataBefore, MAX_DATA_SIZE, stdin);
 		int i;
 		int j = 0;
