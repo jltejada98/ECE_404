@@ -127,7 +127,7 @@ char * clientComm(int clntSockfd,int * senderBuffSize_addr, int * optlen_addr){
     //without taking into account the size of the destination.
     // strcpy(str, recvBuff); 
     //Now using strncpy which copies a specific size, preventing the buffer overflow.
-    strncpy(str recvBuff, senderBuffSize);
+    strncpy(str, recvBuff, MAX_DATA_SIZE);
 
 	
     /* send data to the client */
