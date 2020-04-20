@@ -1,0 +1,30 @@
+SHELL=/bin/sh
+PATH=/usr/local/lib/mh:$PATH
+MAILDIR=$HOME/Mail
+LOGFILE=$HOME/Mail/logfile
+SENDMAIL=/usr/sbin/sendmail
+#VERBOSE=1
+VERBOSE=0
+EOL="
+"
+LOG="$EOL$EOL$EOL"
+LOG="New message log:$EOL"
+LOG=`perl GET_MESSAGE_INDEX`
+LOG="$EOL"
+
+
+# Homework Number: 11
+# Name: Jose Luis Tejada	
+# ECN Login: tejada
+# Due Date: 4/23/2020
+
+
+#junkMail 1 through junkMail 50 : Multiple entries in the “From:”
+#Python equivalent(.*@.*){2,}
+
+:0 :
+* ^From(.*@.*)(.*@.*)+
+junkMail1
+
+
+#junkMail 51 through junkMail 63 
