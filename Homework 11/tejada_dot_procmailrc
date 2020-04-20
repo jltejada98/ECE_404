@@ -1,16 +1,14 @@
-SHELL=/bin/sh
-PATH=/usr/local/lib/mh:$PATH
-MAILDIR=$HOME/Mail
-LOGFILE=$HOME/Mail/logfile
-SENDMAIL=/usr/sbin/sendmail
+SHELL=/bin/sh 
+PATH=/usr/local/lib/mh:$PATH 
+MAILDIR=$HOME/Mail 
+LOGFILE=$HOME/Mail/logfile 
 #VERBOSE=1
 VERBOSE=0
 EOL="
-"(Ruby|Palace|casino|Casino|palace|ruby|CASINO|Slots|Roulette| Blackjack|Poker|stock|Stock|Trade\sDate|Target\sPrice|Penny|penny|Sub-Penny|\$|EUR)
-
+"
 LOG="$EOL$EOL$EOL"
-LOG="New message log:$EOL"
-LOG=`perl GET_MESSAGE_INDEX`
+LOG="New message log:$EOL" 
+LOG=‘perl GET_MESSAGE_INDEX‘ 
 LOG="$EOL"
 
 
@@ -45,9 +43,9 @@ junkMail3
 #junkMail 67 through junkMail 75: Compound Rules recipe
 
 :0 HB :
-* ^Content-Type: (text/html | multipart/alternative | text/plain)
-* charset= ("Windows-1252"|"utf-8")
-* ^Content-Transfer-Encoding: (quoted-printable|8bit|7bit)
+* (^Content-Type: text\/html|^Content-Type: multipart\/alternative|^Content-Type: text\/plain)
+* (charset="Windows-1252"|charset="utf-8")
+* (^Content-Transfer-Encoding: quoted-printable|^Content-Transfer-Encoding: 8bit|^Content-Transfer-Encoding: 7bit)
 junkmail4
 
 
