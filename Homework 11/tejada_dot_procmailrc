@@ -6,7 +6,8 @@ SENDMAIL=/usr/sbin/sendmail
 #VERBOSE=1
 VERBOSE=0
 EOL="
-"
+"(Ruby|Palace|casino|Casino|palace|ruby|CASINO|Slots|Roulette| Blackjack|Poker|stock|Stock|Trade\sDate|Target\sPrice|Penny|penny|Sub-Penny|\$|EUR)
+
 LOG="$EOL$EOL$EOL"
 LOG="New message log:$EOL"
 LOG=`perl GET_MESSAGE_INDEX`
@@ -20,11 +21,33 @@ LOG="$EOL"
 
 
 #junkMail 1 through junkMail 50 : Multiple entries in the “From:”
-#Python equivalent(.*@.*){2,}
 
 :0 :
 * ^From(.*@.*)(.*@.*)+
 junkMail1
 
 
-#junkMail 51 through junkMail 63 
+#junkMail 51 through junkMail 63 : Subject topics/common words
+
+:0 :
+* ^Subject.*(medication|diploma|degree|Diploma|Degree|ills|watches|buy|cheap|Magento|Inteveo|Hostway)
+junkMail2
+
+
+
+#junkMail 64 through junkMail 66 : Body contents/topics.
+
+:0 B :
+* (Ruby|Palace|casino|Casino|palace|ruby|CASINO|Slots|Roulette| Blackjack|Poker|stock|EUR|Stock|stock|trade|Trade\sDate|Target\sPrice|Penny|penny|Sub-Penny|\$)
+junkMail3
+ 
+
+#junkMail 67 through junkMail 75: Compound Rules recipe
+
+:0 HB :
+* ^Content-Type: (text/html | multipart/alternative | text/plain)
+* charset= ("Windows-1252"|"utf-8")
+* ^Content-Transfer-Encoding: (quoted-printable|8bit|7bit)
+junkmail4
+
+
